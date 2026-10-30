@@ -1,0 +1,117 @@
+openapi: 3.0.3
+info:
+  title: Movie Theater Seat Reservation API
+  version: 1.0.0
+  description: >
+    API for holding seats for a selected movie showing. A customer can check
+    reservation details, request a temporary hold on selected seats, and
+    cancel an active reservation before completing payment.
+servers:
+  - url: https://api.example.com
+    description: Example movie theater server
+
+paths:
+  /reservations/{reservationId}:
+    get:
+      summary: Get reservation details
+      description: Return the showtime, held seats, and expiration for a reservation.
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          description: Identifier returned when the reservation was created.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reservation details returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '404':
+          description: Reservation was not found.
+
+    delete:
+      summary: Cancel a seat reservation
+      description: Cancel an active seat hold and release its seats for other customers.
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          description: Identifier of the reservation to cancel.
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Reservation canceled and seats released.
+        '404':
+          description: Reservation was not found.
+        '409':
+          description: Reservation has expired or is already paid and cannot be canceled here.
+
+  /reservations:
+    post:
+      summary: Reserve seats for a showtime
+      description: Temporarily hold the requested seats if they are available.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReservationRequest'
+      responses:
+        '201':
+          description: Seats held and reservation created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '409':
+          description: One or more requested seats are unavailable.
+
+components:
+  schemas:
+    CreateReservationRequest:
+      type: object
+      required:
+        - showtimeId
+        - seatNumbers
+      properties:
+        showtimeId:
+          type: string
+          description: Identifier of the movie showing.
+        seatNumbers:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: Seat identifiers the customer wants to hold.
+
+    Reservation:
+      type: object
+      required:
+        - reservationId
+        - showtimeId
+        - seatNumbers
+        - status
+        - expiresAt
+      properties:
+        reservationId:
+          type: string
+        showtimeId:
+          type: string
+        seatNumbers:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum:
+            - active
+            - canceled
+            - expired
+        expiresAt:
+          type: string
+          format: date-time
+          description: Time when the temporary seat hold expires.
